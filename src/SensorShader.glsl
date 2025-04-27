@@ -35,7 +35,7 @@ vec4 toEye(vec2 uv, float depth) {
 
 float getDepth(vec4 depthTex) {
     float z_window = czm_reverseLogDepth(czm_unpackDepth(depthTex));
-    return (1.0 * z_window - czm_depthRange.near - czm_depthRange.far) / (czm_depthRange.far - czm_depthRange.near);
+    return (2.0 * z_window - czm_depthRange.near - czm_depthRange.far) / (czm_depthRange.far - czm_depthRange.near);
 }
 
 void main() {
