@@ -157,14 +157,14 @@ void main()
     // Calculate the shadow visibility
     float visibility = czm_shadowVisibility(shadowMap, shadowParameters); 
 
-    if (visibility ==1.0) { // Threshold use kiya
-    FragColor = mix(texture(colorTexture, v_textureCoordinates), vec4(viewArea_color, 1.0), percentShade);
-} else {
-    if (abs(shadowPosition.z - 0.0) < 0.01) {
-        FragColor = color;
-        return;
+    // If the visibility is 1.0, mix the color with the visible color
+    if(visibility==1.0){
+        FragColor = mix(texture(colorTexture, v_textureCoordinates),vec4(viewArea_color,1.0),percentShade);
+    }else{
+        if(abs(shadowPosition.z-0.0)<0.01){
+            FragColor = color;
+            return;
+        }
+        FragColor = mix(texture(colorTexture, v_textureCoordinates),vec4(shadowArea_color,1.0),percentShade);
     }
-    FragColor = mix(texture(colorTexture, v_textureCoordinates), vec4(shadowArea_color, 1.0), percentShade);
-}
-
 }`;
