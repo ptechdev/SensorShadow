@@ -1,6 +1,5 @@
 export default `
 #define USE_NORMAL_SHADING
-
 uniform float view_distance;
 uniform vec3 viewArea_color;
 uniform vec3 shadowArea_color;
@@ -27,18 +26,24 @@ uniform bool exclude_terrain;
 in vec2 v_textureCoordinates;
 out vec4 FragColor;
 
-vec4 toEye(vec2 uv, float depth) {
-    vec4 camPosition = czm_inverseProjection * vec4(uv * 2.0 - 1.0, depth, 1.0);
+vec4 toEye(in vec2 uv, in float depth) {
+    float x = uv.x * 2.0 - 1.0;
+    float y = uv.y * 2.0 - 1.0;
+    vec4 camPosition = czm_inverseProjection * vec4(x, y, depth, 1.0);
     camPosition /= camPosition.w;
     return camPosition;
 }
 
-float getDepth(vec4 depthTex) {
-    float z_window = czm_reverseLogDepth(czm_unpackDepth(depthTex));
-    return (2.0 * z_window - czm_depthRange.near - czm_depthRange.far) / (czm_depthRange.far - czm_depthRange.near);
+float getDepth(in vec4 depth) {
+    float z_window = czm_unpackDepth(depth);
+    z_window = czm_reverseLogDepth(z_window);
+    float n_range = czm_depthRange.near;
+    float f_range = czm_depthRange.far;
+    return (2.0 * z_window - n_range - f_range) / (f_range - n_range);
 }
 
-void main() {
+void main() 
+{ 
     vec4 color = texture(colorTexture, v_textureCoordinates);
     vec4 cDepth = texture(depthTexture, v_textureCoordinates);
 
@@ -50,27 +55,21 @@ void main() {
     float depth = getDepth(cDepth);
     vec4 positionEC = toEye(v_textureCoordinates, depth);
 
-    // Check if it's terrain and should be excluded
-    if (exclude_terrain && czm_ellipsoidContainsPoint(ellipsoidInverseRadii, positionEC.xyz)) {
+    if (
+        cDepth.r >= 1.0 ||
+        (exclude_terrain && czm_ellipsoidContainsPoint(ellipsoidInverseRadii, positionEC.xyz))
+    ) {
         FragColor = color;
         return;
     }
 
-    // Check view distance
-    vec4 lw = czm_inverseView * shadowMap_camera_positionEC;
-    vec4 vw = czm_inverseView * vec4(positionEC.xyz, 1.0);
-    
-    if (distance(lw.xyz, vw.xyz) > view_distance) {
-        FragColor = color;
-        return;
-    }
-
-    // Shadow parameters setup
     czm_shadowParameters shadowParameters;
     shadowParameters.texelStepSize = shadowMap_texelSizeDepthBiasAndNormalShadingSmooth.xy;
-    shadowParameters.depthBias = 0.00001;
+    shadowParameters.depthBias = shadowMap_texelSizeDepthBiasAndNormalShadingSmooth.z;
     shadowParameters.normalShadingSmooth = shadowMap_texelSizeDepthBiasAndNormalShadingSmooth.w;
     shadowParameters.darkness = shadowMap_normalOffsetScaleDistanceMaxDistanceAndDarkness.w;
+
+    shadowParameters.depthBias *= max(depth * 0.01, 1.0);
 
     vec3 directionEC = normalize(positionEC.xyz - shadowMap_camera_positionEC.xyz);
     float nDotL = clamp(dot(vec3(1.0), -directionEC), 0.0, 1.0);
@@ -83,19 +82,28 @@ void main() {
         return;
     }
 
-    // Apply shadow map lookup
+    vec4 vw = czm_inverseView * vec4(positionEC.xyz, 1.0);
+    float fragDistance = distance(viewPosition_WC.xyz, vw.xyz);
+
+    if (fragDistance > view_distance) {
+        FragColor = color;
+        return;
+    }
+
     shadowParameters.texCoords = shadowPosition.xy;
     shadowParameters.depth = shadowPosition.z;
     shadowParameters.nDotL = nDotL;
 
     float visibility = czm_shadowVisibility(shadowMap, shadowParameters);
 
-   if (visibility > 0.9) {
-    // Visible area (green)
-    FragColor = mix(color, vec4(viewArea_color, 1.0), percentShade);
-} else {
-    // Non-visible area (red)
-    FragColor = mix(color, vec4(shadowArea_color, 1.0), percentShade);
-}
+    if (visibility > 0.99) { 
+        FragColor = mix(color, vec4(viewArea_color, 1.0), percentShade);
+    } else {
+        if (abs(shadowPosition.z - 0.0) < 0.01) {
+            FragColor = color;
+            return;
+        }
+        FragColor = mix(color, vec4(shadowArea_color, 1.0), percentShade);
+    }
 }
 `;
