@@ -90,14 +90,12 @@ void main() {
 
     float visibility = czm_shadowVisibility(shadowMap, shadowParameters);
 
-    if (visibility == 1.0) {
-        FragColor = mix(color, vec4(viewArea_color, 1.0), percentShade);
-    } else {
-        if (abs(shadowPosition.z) < 0.01) {
-            FragColor = color;
-        } else {
-            FragColor = mix(color, vec4(shadowArea_color, 1.0), percentShade);
-        }
-    }
+// Use threshold instead of strict 1.0 check
+if (visibility > 0.9) {
+    FragColor = mix(color, vec4(viewArea_color, 1.0), percentShade); // Green - Visible
+} else {
+    FragColor = mix(color, vec4(shadowArea_color, 1.0), percentShade); // Red - Not visible
+}
+
 }
 `;
