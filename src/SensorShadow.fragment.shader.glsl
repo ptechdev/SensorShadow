@@ -121,7 +121,8 @@ void main()
     shadowParameters.darkness = shadowMap_normalOffsetScaleDistanceMaxDistanceAndDarkness.w; 
 
     // Adjust the depth bias
-    shadowParameters.depthBias *= max(depth * 0.01, 1.0); 
+    //shadowParameters.depthBias *= max(depth * 0.01, 1.0); 
+shadowParameters.depthBias =0.0001; 
 
     // Calculate the direction in eye coordinates
     vec3 directionEC = normalize(positionEC.xyz - shadowMap_camera_positionEC.xyz); 
