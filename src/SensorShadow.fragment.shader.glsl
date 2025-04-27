@@ -161,10 +161,7 @@ void main()
     if(visibility==1.0){
         FragColor = mix(texture(colorTexture, v_textureCoordinates),vec4(viewArea_color,1.0),percentShade);
     }else{
-        if(abs(shadowPosition.z-0.0)<0.01){
-            FragColor = color;
-            return;
-        }
+       
         FragColor = mix(texture(colorTexture, v_textureCoordinates),vec4(shadowArea_color,1.0),percentShade);
     }
 }`;
